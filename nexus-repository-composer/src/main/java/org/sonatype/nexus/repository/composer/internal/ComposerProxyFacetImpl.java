@@ -225,7 +225,31 @@ public class ComposerProxyFacetImpl
           return composerJsonProcessor.getDistUrl(vendor, project, version, payload);
         }
       } else {
-        return composerJsonProcessor.getDistUrlFromPackage(vendor, project, version, payload);
+        String stableVersion = composerJsonProcessor.getDistUrlFromPackage(vendor, project, version, payload);
+
+        if (stableVersion != null) {
+          return stableVersion;
+        }
+
+        // try dev versions
+        request = new Request.Builder().action(GET).path("/" + buildPackagePath(vendor, project, true))
+                .attribute(ComposerProviderHandler.DO_NOT_REWRITE, "true").build();
+        response = getRepository().facet(ViewFacet.class).dispatch(request, context);
+        payload = response.getPayload();
+
+        if (payload == null) {
+          throw new NonResolvableProviderJsonException(
+                  String.format("No provider found for vendor %s, project %s, version %s", vendor, project, version));
+        }
+
+        String devVersion = composerJsonProcessor.getDistUrlFromPackage(vendor, project, version, payload);
+
+        if (devVersion == null) {
+          throw new NonResolvableProviderJsonException(
+                  String.format("No provider found for vendor %s, project %s, version %s", vendor, project, version));
+        }
+
+        return devVersion;
       }
     }
     catch (IOException e) {

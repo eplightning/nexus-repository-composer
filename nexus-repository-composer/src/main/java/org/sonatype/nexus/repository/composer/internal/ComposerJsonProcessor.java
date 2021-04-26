@@ -602,17 +602,24 @@ public class ComposerJsonProcessor
     String vendorAndProject = String.format(VENDOR_AND_PROJECT, vendor, project);
     Map<String, Object> json = parseJson(payload);
     composerJsonMinifier.expand(json);
+
+    if (!json.containsKey(PACKAGES_KEY)) {
+      return null;
+    }
     Map<String, Object> packagesMap = (Map<String, Object>) json.get(PACKAGES_KEY);
+
+    if (!packagesMap.containsKey(vendorAndProject)) {
+      return null;
+    }
     List<Map<String, Object>> packageInfo = (List<Map<String, Object>>) packagesMap.get(vendorAndProject);
 
-    Map<String, Object> versionInfo = packageInfo
+    return packageInfo
             .stream()
             .filter((v) -> version.equals(v.get(VERSION_KEY)))
             .findFirst()
-            .orElseThrow(() -> new IOException("version not found"));
-
-    Map<String, Object> distInfo = (Map<String, Object>) versionInfo.get(DIST_KEY);
-    return (String) distInfo.get(URL_KEY);
+            .map((versionInfo) -> (Map<String, Object>) versionInfo.get(DIST_KEY))
+            .map((distInfo) -> (String) distInfo.get(URL_KEY))
+            .orElse(null);
   }
 
   private Map<String, Object> parseJson(final Payload payload) throws IOException {
